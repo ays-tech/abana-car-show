@@ -7,7 +7,6 @@ import { useKiosk } from "@/lib/store";
 import { useState, useEffect } from "react";
 
 const HEADLINES = [
-  { line1: "Welcome to AbanaCars", line2: "Home of luxury." },
 
   { line1: "Find your next car", line2: "in seconds." },
 
