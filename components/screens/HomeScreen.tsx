@@ -7,15 +7,15 @@ import { useKiosk } from "@/lib/store";
 import { useState, useEffect } from "react";
 
 const HEADLINES = [
+  { line1: "Welcome to AbanaCars", line2: "Home of luxury." },
 
   { line1: "Find your next car", line2: "in seconds." },
 
-  { line1: "Built for your",     line2: "lifestyle."  },
+  { line1: "Built for your", line2: "lifestyle." },
 
-  { line1: "Explore. Compare.",  line2: "Decide."     },
+  { line1: "Explore. Compare.", line2: "Decide." },
 
-  { line1: "Nigeria's finest",   line2: "automobiles."},
-
+  { line1: "Nigeria's finest", line2: "automobiles." },
 ];
 
 const BRAND_LOGOS: Record<string, string> = {
