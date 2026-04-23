@@ -1,4 +1,5 @@
 "use client";
+
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useCallback } from "react";
 import Image from "next/image";
@@ -13,6 +14,7 @@ export default function DetailScreen() {
   const [mode, setMode] = useState<"gallery" | "rotate">("gallery");
   const [isDragging, setIsDragging] = useState(false);
   const dragStart = useRef(0);
+
   const saved = state.savedCars.some((c) => c.id === car.id);
   const inCompare = state.compareList.some((c) => c.id === car.id);
 
@@ -21,15 +23,24 @@ export default function DetailScreen() {
     setIsDragging(true);
   }, []);
 
-  const handleDragEnd = useCallback((clientX: number) => {
-    if (!isDragging) return;
-    const diff = clientX - dragStart.current;
-    if (Math.abs(diff) > 30) {
-      const dir = diff > 0 ? -1 : 1;
-      setRotateIdx((prev) => (prev + dir + car.images.rotate.length) % car.images.rotate.length);
-    }
-    setIsDragging(false);
-  }, [isDragging, car.images.rotate.length]);
+  const handleDragEnd = useCallback(
+    (clientX: number) => {
+      if (!isDragging) return;
+      const diff = clientX - dragStart.current;
+
+      if (Math.abs(diff) > 30) {
+        const dir = diff > 0 ? -1 : 1;
+        setRotateIdx(
+          (prev) =>
+            (prev + dir + car.images.rotate.length) %
+            car.images.rotate.length
+        );
+      }
+
+      setIsDragging(false);
+    },
+    [isDragging, car.images.rotate.length]
+  );
 
   if (!car) return null;
 
@@ -49,19 +60,22 @@ export default function DetailScreen() {
 
   return (
     <ScreenLayout title={`${car.brand} ${car.model}`} showBack>
-      <div className="flex flex-1 overflow-hidden">
-        {/* LEFT — Image viewer */}
-        <div className="w-[55%] flex flex-col border-r border-[rgba(200,164,90,0.1)]">
-          {/* Mode toggle */}
+      {/* MAIN WRAPPER */}
+      <div className="flex h-full overflow-hidden">
+
+        {/* LEFT — VISUAL */}
+        <div className="w-[55%] flex flex-col h-full min-h-0 border-r border-[rgba(200,164,90,0.1)]">
+
+          {/* MODE TOGGLE */}
           <div className="flex border-b border-[rgba(200,164,90,0.1)]">
             {(["gallery", "rotate"] as const).map((m) => (
               <button
                 key={m}
                 onClick={() => setMode(m)}
-                className={`flex-1 py-3 text-xs tracking-[3px] uppercase transition-all ${
+                className={`flex-1 py-4 text-xs tracking-[3px] uppercase transition-all ${
                   mode === m
-                    ? "bg-[rgba(200,164,90,0.1)] text-[#C8A45A] border-b-2 border-[#C8A45A]"
-                    : "text-[rgba(244,239,228,0.35)]"
+                    ? "bg-black/40 text-[#C8A45A] border-b-2 border-[#C8A45A]"
+                    : "text-white/30 hover:text-white/60"
                 }`}
               >
                 {m === "gallery" ? "📷 Gallery" : "🔄 360° View"}
@@ -69,55 +83,78 @@ export default function DetailScreen() {
             ))}
           </div>
 
-          {/* Main image */}
+          {/* IMAGE AREA */}
           <div
-            className="relative flex-1 overflow-hidden"
-            onMouseDown={(e) => { if (mode === "rotate") handleDragStart(e.clientX); }}
-            onMouseUp={(e) => { if (mode === "rotate") handleDragEnd(e.clientX); }}
-            onTouchStart={(e) => { if (mode === "rotate") handleDragStart(e.touches[0].clientX); }}
-            onTouchEnd={(e) => { if (mode === "rotate") handleDragEnd(e.changedTouches[0].clientX); }}
+            className="relative flex-1 min-h-0 overflow-hidden bg-black"
+            onMouseDown={(e) =>
+              mode === "rotate" && handleDragStart(e.clientX)
+            }
+            onMouseUp={(e) =>
+              mode === "rotate" && handleDragEnd(e.clientX)
+            }
+            onTouchStart={(e) =>
+              mode === "rotate" && handleDragStart(e.touches[0].clientX)
+            }
+            onTouchEnd={(e) =>
+              mode === "rotate" && handleDragEnd(e.changedTouches[0].clientX)
+            }
           >
             <AnimatePresence mode="wait">
               <motion.div
                 key={mode === "gallery" ? galleryIdx : rotateIdx}
                 className="absolute inset-0"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.25 }}
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.6, ease: "easeOut" }}
               >
                 <Image
-                  src={mode === "gallery" ? car.images.gallery[galleryIdx] : car.images.rotate[rotateIdx]}
+                  src={
+                    mode === "gallery"
+                      ? car.images.gallery[galleryIdx]
+                      : car.images.rotate[rotateIdx]
+                  }
                   alt={car.model}
                   fill
-                  className="object-cover"
+                  className="object-cover scale-[1.08] transition-transform duration-1000 ease-out"
                   unoptimized
                   draggable={false}
                 />
               </motion.div>
             </AnimatePresence>
 
-            {/* 360 drag hint */}
+            {/* ROTATE HINT */}
             {mode === "rotate" && (
               <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                <div className="glass px-4 py-2 text-[10px] tracking-[3px] text-[rgba(244,239,228,0.5)] uppercase">
-                  ← Drag to rotate →
+                <div className="glass px-4 py-2 text-[10px] tracking-[3px] text-white/50 uppercase animate-pulse">
+                  Drag slowly to explore 360°
                 </div>
               </div>
             )}
 
-            {/* Gallery nav arrows */}
+            {/* GALLERY ARROWS */}
             {mode === "gallery" && (
               <>
                 <button
-                  onClick={() => setGalleryIdx((i) => (i - 1 + car.images.gallery.length) % car.images.gallery.length)}
-                  className="absolute left-3 top-1/2 -translate-y-1/2 glass w-12 h-12 flex items-center justify-center text-xl active:scale-90 transition-transform"
+                  onClick={() =>
+                    setGalleryIdx(
+                      (i) =>
+                        (i - 1 + car.images.gallery.length) %
+                        car.images.gallery.length
+                    )
+                  }
+                  className="absolute left-3 top-1/2 -translate-y-1/2 glass w-12 h-12 flex items-center justify-center text-xl active:scale-90"
                 >
                   ←
                 </button>
+
                 <button
-                  onClick={() => setGalleryIdx((i) => (i + 1) % car.images.gallery.length)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 glass w-12 h-12 flex items-center justify-center text-xl active:scale-90 transition-transform"
+                  onClick={() =>
+                    setGalleryIdx(
+                      (i) => (i + 1) % car.images.gallery.length
+                    )
+                  }
+                  className="absolute right-3 top-1/2 -translate-y-1/2 glass w-12 h-12 flex items-center justify-center text-xl active:scale-90"
                 >
                   →
                 </button>
@@ -125,7 +162,7 @@ export default function DetailScreen() {
             )}
           </div>
 
-          {/* Thumbnails (gallery mode) */}
+          {/* THUMBNAILS */}
           {mode === "gallery" && (
             <div className="flex gap-2 p-3 border-t border-[rgba(200,164,90,0.08)]">
               {car.images.gallery.map((img, i) => (
@@ -133,24 +170,34 @@ export default function DetailScreen() {
                   key={i}
                   onClick={() => setGalleryIdx(i)}
                   className={`relative flex-1 h-16 overflow-hidden transition-all ${
-                    i === galleryIdx ? "ring-2 ring-[#C8A45A]" : "opacity-50"
+                    i === galleryIdx
+                      ? "ring-2 ring-[#C8A45A]"
+                      : "opacity-50"
                   }`}
                 >
-                  <Image src={img} alt="" fill className="object-cover" unoptimized />
+                  <Image
+                    src={img}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
                 </button>
               ))}
             </div>
           )}
 
-          {/* 360 rotation dots */}
+          {/* ROTATE DOTS */}
           {mode === "rotate" && (
             <div className="flex gap-1 p-3 border-t border-[rgba(200,164,90,0.08)] justify-center">
               {car.images.rotate.map((_, i) => (
                 <button
                   key={i}
                   onClick={() => setRotateIdx(i)}
-                  className={`h-1 transition-all rounded-full ${
-                    i === rotateIdx ? "w-6 bg-[#C8A45A]" : "w-2 bg-white/20"
+                  className={`h-1 rounded-full transition-all ${
+                    i === rotateIdx
+                      ? "w-6 bg-[#C8A45A]"
+                      : "w-2 bg-white/20"
                   }`}
                 />
               ))}
@@ -158,77 +205,95 @@ export default function DetailScreen() {
           )}
         </div>
 
-        {/* RIGHT — Info */}
-        <div className="w-[45%] flex flex-col">
-          {/* Header */}
+        {/* RIGHT — INFO */}
+        <div className="w-[45%] flex flex-col h-full">
+
+          {/* HEADER */}
           <div className="p-6 border-b border-[rgba(200,164,90,0.1)]">
-            <div className="text-[10px] tracking-[4px] text-[#C8A45A] uppercase mb-1">{car.brand}</div>
-            <div className="font-serif text-3xl font-light text-white">{car.model}</div>
-            <div className="font-serif text-2xl text-[#C8A45A] mt-1">{car.priceLabel}</div>
-            <p className="text-xs text-[rgba(244,239,228,0.45)] mt-3 leading-relaxed">{car.description}</p>
+            <div className="text-[10px] tracking-[4px] text-[#C8A45A] uppercase mb-1">
+              {car.brand}
+            </div>
+            <div className="font-serif text-3xl text-white">
+              {car.model}
+            </div>
+            <div className="font-serif text-2xl text-[#C8A45A] mt-1">
+              {car.priceLabel}
+            </div>
+            <p className="text-xs text-white/40 mt-3 leading-relaxed">
+              {car.description}
+            </p>
           </div>
 
-          {/* Specs */}
+          {/* SPECS */}
           <div className="flex-1 kiosk-scroll p-4">
-            <div className="text-[9px] tracking-[4px] text-[rgba(244,239,228,0.3)] uppercase mb-3">
+            <div className="text-[9px] tracking-[4px] text-white/30 uppercase mb-3">
               Specifications
             </div>
-            <div className="space-y-0">
-              {specs.map((spec, i) => (
-                <div
-                  key={spec.label}
-                  className={`flex items-center justify-between py-3 border-b border-[rgba(255,255,255,0.05)] ${
-                    i % 2 === 0 ? "bg-transparent" : "bg-[rgba(255,255,255,0.02)]"
-                  }`}
+
+            {specs.map((spec, i) => (
+              <div
+                key={spec.label}
+                className="flex justify-between py-3 border-b border-white/5"
+              >
+                <span className="text-xs text-white/40">
+                  {spec.label}
+                </span>
+                <span
+                  className={
+                    spec.highlight
+                      ? "text-[#C8A45A] font-serif"
+                      : "text-white"
+                  }
                 >
-                  <span className="text-xs text-[rgba(244,239,228,0.4)] tracking-wide">{spec.label}</span>
-                  <span className={`text-sm font-medium ${spec.highlight ? "text-[#C8A45A] font-serif text-base" : "text-[#F4EFE4]"}`}>
-                    {spec.value}
-                  </span>
-                </div>
-              ))}
-            </div>
+                  {spec.value}
+                </span>
+              </div>
+            ))}
           </div>
 
-          {/* Actions */}
+          {/* ACTIONS */}
           <div className="p-4 border-t border-[rgba(200,164,90,0.1)] space-y-2">
+
             <button
-              onClick={() => dispatch({ type: "GO", screen: "share" })}
-              className="w-full bg-[#C8A45A] text-[#060606] py-4 text-xs tracking-[3px] uppercase font-semibold active:scale-95 transition-transform flex items-center justify-center gap-2"
+              onClick={() =>
+                dispatch({ type: "GO", screen: "share" })
+              }
+              className="w-full bg-[#C8A45A] text-black py-4 text-xs tracking-[3px] uppercase font-semibold"
             >
-              📱 Save & Send to Phone
+              Save & Send to Phone
             </button>
+
             <div className="flex gap-2">
               <button
-                onClick={() => {
+                onClick={() =>
                   inCompare
-                    ? dispatch({ type: "REMOVE_COMPARE", id: car.id })
-                    : dispatch({ type: "ADD_COMPARE", car });
-                }}
-                className={`flex-1 py-3 text-xs tracking-[2px] uppercase border transition-all active:scale-95 ${
-                  inCompare
-                    ? "border-[#C8A45A] text-[#C8A45A] bg-[rgba(200,164,90,0.1)]"
-                    : "border-[rgba(200,164,90,0.3)] text-[rgba(244,239,228,0.5)]"
-                }`}
+                    ? dispatch({
+                        type: "REMOVE_COMPARE",
+                        id: car.id,
+                      })
+                    : dispatch({ type: "ADD_COMPARE", car })
+                }
+                className="flex-1 py-3 text-xs border border-white/20 text-white/60 uppercase"
               >
                 {inCompare ? "✓ In Compare" : "+ Compare"}
               </button>
+
               <button
-                onClick={() => {
+                onClick={() =>
                   saved
-                    ? dispatch({ type: "UNSAVE_CAR", id: car.id })
-                    : dispatch({ type: "SAVE_CAR", car });
-                }}
-                className={`flex-1 py-3 text-xs tracking-[2px] uppercase border transition-all active:scale-95 ${
-                  saved
-                    ? "border-[#C8A45A] text-[#C8A45A] bg-[rgba(200,164,90,0.1)]"
-                    : "border-[rgba(200,164,90,0.3)] text-[rgba(244,239,228,0.5)]"
-                }`}
+                    ? dispatch({
+                        type: "UNSAVE_CAR",
+                        id: car.id,
+                      })
+                    : dispatch({ type: "SAVE_CAR", car })
+                }
+                className="flex-1 py-3 text-xs border border-white/20 text-white/60 uppercase"
               >
                 {saved ? "♥ Saved" : "♡ Save"}
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </ScreenLayout>
