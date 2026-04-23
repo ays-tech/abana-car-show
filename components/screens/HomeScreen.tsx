@@ -660,14 +660,14 @@ export default function HomeScreen() {
         }}
 
       >
-
-        <div style={{ display:"flex",alignItems:"center",gap:12 }}>
+        
+        <div style={{ display:"flex", alignItems:"center", gap:5, width:"100%", justifyContent:"flex-start" }}>
 
           <span style={{ width:20,height:1,background:"rgba(200,164,90,0.35)",display:"block" }} />
 
           <span style={{ fontSize:9,letterSpacing:3,textTransform:"uppercase",color:"rgba(244,239,228,0.22)" }}>
 
-            Victoria Island Showroom · Lagos
+      
 
           </span>
 
@@ -717,7 +717,7 @@ export default function HomeScreen() {
 
           <span style={{ fontSize:9,letterSpacing:3,textTransform:"uppercase",color:"rgba(244,239,228,0.22)" }}>
 
-            400+ vehicles available
+          
 
           </span>
 
