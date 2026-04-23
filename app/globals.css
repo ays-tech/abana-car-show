@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #C8A45A;
+  --gold2: #E2C47A;
+  --gold-dim: rgba(200, 164, 90, 0.15);
+  --black: #060606;
+  --dark: #0C0C0E;
+  --dark2: #141416;
+  --dark3: #1C1C1F;
+  --ivory: #F4EFE4;
+  --ivory2: rgba(244, 239, 228, 0.6);
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+html, body {
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  background: #060606;
+  color: #F4EFE4;
+  font-family: 'DM Sans', sans-serif;
+}
+
+/** { cursor: none !important; }*/
+
+.kiosk-scroll {
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.kiosk-scroll::-webkit-scrollbar { display: none; }
+
+.glass {
+  background: rgba(20, 20, 22, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(200, 164, 90, 0.12);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  width: 100%;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  background: rgba(200, 164, 90, 0.2);
+  height: 4px;
+  border-radius: 2px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 32px;
+  height: 32px;
+  background: #C8A45A;
+  border-radius: 50%;
+  margin-top: -14px;
+  box-shadow: 0 0 0 6px rgba(200, 164, 90, 0.2);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.5s ease forwards; }
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(200,164,90,0.06) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2.5s infinite;
+}
