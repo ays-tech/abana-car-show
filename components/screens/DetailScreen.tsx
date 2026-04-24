@@ -1,299 +1,243 @@
 "use client";
-
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useRef, useCallback } from "react";
-import Image from "next/image";
 import { useKiosk } from "@/lib/store";
 import ScreenLayout from "../kiosk/ScreenLayout";
 
 export default function DetailScreen() {
   const { state, dispatch } = useKiosk();
-  const car = state.selectedCar!;
+  const car = state.selectedCar;
+
+  /* ── all hooks before any return ── */
   const [galleryIdx, setGalleryIdx] = useState(0);
-  const [rotateIdx, setRotateIdx] = useState(0);
-  const [mode, setMode] = useState<"gallery" | "rotate">("gallery");
-  const [isDragging, setIsDragging] = useState(false);
+  const [rotateIdx,  setRotateIdx]  = useState(0);
+  const [mode,       setMode]       = useState<"gallery" | "rotate">("gallery");
+  const [dragging,   setDragging]   = useState(false);
   const dragStart = useRef(0);
 
-  const saved = state.savedCars.some((c) => c.id === car.id);
-  const inCompare = state.compareList.some((c) => c.id === car.id);
+  const onDragStart = useCallback((x: number) => { dragStart.current = x; setDragging(true); }, []);
+  const onDragEnd   = useCallback((x: number) => {
+    if (!dragging) return;
+    const diff = x - dragStart.current;
+    if (Math.abs(diff) > 28) {
+      const len = car?.images.rotate.length ?? 8;
+      setRotateIdx(p => (p + (diff > 0 ? -1 : 1) + len) % len);
+    }
+    setDragging(false);
+  }, [dragging, car]);
 
-  const handleDragStart = useCallback((clientX: number) => {
-    dragStart.current = clientX;
-    setIsDragging(true);
-  }, []);
+  /* ── early return after hooks ── */
+  if (!car) {
+    return (
+      <ScreenLayout title="Vehicle Detail" showBack>
+        <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={{ textAlign: "center" }}>
+            <p style={{ fontFamily: "Georgia,serif", fontSize: 26, color: "rgba(244,239,228,0.38)" }}>No car selected</p>
+            <button onClick={() => dispatch({ type: "BACK" })}
+              style={{ marginTop: 24, background: "#C8A45A", color: "#060606", border: "none",
+                padding: "12px 32px", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700 }}>
+              Go Back
+            </button>
+          </div>
+        </div>
+      </ScreenLayout>
+    );
+  }
 
-  const handleDragEnd = useCallback(
-    (clientX: number) => {
-      if (!isDragging) return;
-      const diff = clientX - dragStart.current;
-
-      if (Math.abs(diff) > 30) {
-        const dir = diff > 0 ? -1 : 1;
-        setRotateIdx(
-          (prev) =>
-            (prev + dir + car.images.rotate.length) %
-            car.images.rotate.length
-        );
-      }
-
-      setIsDragging(false);
-    },
-    [isDragging, car.images.rotate.length]
-  );
-
-  if (!car) return null;
+  const saved     = state.savedCars.some(c => c.id === car.id);
+  const inCompare = state.compareList.some(c => c.id === car.id);
+  const currentImg = mode === "gallery" ? car.images.gallery[galleryIdx] : car.images.rotate[rotateIdx];
 
   const specs = [
-    { label: "Price", value: car.priceLabel, highlight: true },
-    { label: "Engine", value: car.engine },
-    { label: "Power", value: `${car.horsepower} hp` },
-    { label: "Fuel", value: car.fuel },
-    { label: "Consumption", value: car.consumption },
-    { label: "Transmission", value: car.transmission },
-    { label: "Seats", value: `${car.seats} seats` },
-    { label: "0–100 km/h", value: car.specs.acceleration },
-    { label: "Top Speed", value: car.specs.topSpeed },
-    { label: "Boot Space", value: car.specs.bootSpace },
-    { label: "Warranty", value: car.specs.warranty },
+    { label: "Price",        val: car.priceLabel,         gold: true  },
+    { label: "Engine",       val: car.engine              },
+    { label: "Power",        val: `${car.horsepower} hp`  },
+    { label: "Fuel Type",    val: car.fuel                },
+    { label: "Consumption",  val: car.consumption         },
+    { label: "Transmission", val: car.transmission        },
+    { label: "Seats",        val: `${car.seats} seats`    },
+    { label: "0–100 km/h",   val: car.specs.acceleration  },
+    { label: "Top Speed",    val: car.specs.topSpeed      },
+    { label: "Boot Space",   val: car.specs.bootSpace     },
+    { label: "Warranty",     val: car.specs.warranty      },
   ];
 
   return (
     <ScreenLayout title={`${car.brand} ${car.model}`} showBack>
-      {/* MAIN WRAPPER */}
-      <div className="flex h-full overflow-hidden">
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", minHeight: 0 }}>
 
-        {/* LEFT — VISUAL */}
-        <div className="w-[55%] flex flex-col h-full min-h-0 border-r border-[rgba(200,164,90,0.1)]">
+        {/* ── LEFT: image viewer (55%) ── */}
+        <div style={{ width: "55%", display: "flex", flexDirection: "column", borderRight: "1px solid rgba(200,164,90,0.1)", minHeight: 0 }}>
 
-          {/* MODE TOGGLE */}
-          <div className="flex border-b border-[rgba(200,164,90,0.1)]">
-            {(["gallery", "rotate"] as const).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`flex-1 py-4 text-xs tracking-[3px] uppercase transition-all ${
-                  mode === m
-                    ? "bg-black/40 text-[#C8A45A] border-b-2 border-[#C8A45A]"
-                    : "text-white/30 hover:text-white/60"
-                }`}
-              >
-                {m === "gallery" ? "📷 Gallery" : "🔄 360° View"}
+          {/* Mode tabs */}
+          <div style={{ flexShrink: 0, display: "flex", borderBottom: "1px solid rgba(200,164,90,0.1)" }}>
+            {(["gallery", "rotate"] as const).map(m => (
+              <button key={m} onClick={() => setMode(m)}
+                style={{
+                  flex: 1, padding: "13px 0", fontSize: 10, letterSpacing: 3,
+                  textTransform: "uppercase", border: "none",
+                  color: mode === m ? "#C8A45A" : "rgba(244,239,228,0.3)",
+                  borderBottom: mode === m ? "2px solid #C8A45A" : "2px solid transparent",
+                  background: mode === m ? "rgba(200,164,90,0.05)" : "transparent",
+                  transition: "all 0.2s",
+                }}>
+                {m === "gallery" ? "📷  Gallery" : "🔄  360° View"}
               </button>
             ))}
           </div>
 
-          {/* IMAGE AREA */}
+          {/* Main image */}
           <div
-            className="relative flex-1 min-h-0 overflow-hidden bg-black"
-            onMouseDown={(e) =>
-              mode === "rotate" && handleDragStart(e.clientX)
-            }
-            onMouseUp={(e) =>
-              mode === "rotate" && handleDragEnd(e.clientX)
-            }
-            onTouchStart={(e) =>
-              mode === "rotate" && handleDragStart(e.touches[0].clientX)
-            }
-            onTouchEnd={(e) =>
-              mode === "rotate" && handleDragEnd(e.changedTouches[0].clientX)
-            }
+            style={{ flex: 1, position: "relative", overflow: "hidden", background: "#141416", minHeight: 0 }}
+            onMouseDown={e => { if (mode === "rotate") onDragStart(e.clientX); }}
+            onMouseUp={e   => { if (mode === "rotate") onDragEnd(e.clientX);   }}
+            onTouchStart={e => { if (mode === "rotate") onDragStart(e.touches[0].clientX); }}
+            onTouchEnd={e   => { if (mode === "rotate") onDragEnd(e.changedTouches[0].clientX); }}
           >
             <AnimatePresence mode="wait">
-              <motion.div
-                key={mode === "gallery" ? galleryIdx : rotateIdx}
-                className="absolute inset-0"
-                initial={{ opacity: 0, scale: 1.05 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.6, ease: "easeOut" }}
-              >
-                <Image
-                  src={
-                    mode === "gallery"
-                      ? car.images.gallery[galleryIdx]
-                      : car.images.rotate[rotateIdx]
-                  }
-                  alt={car.model}
-                  fill
-                  className="object-cover scale-[1.08] transition-transform duration-1000 ease-out"
-                  unoptimized
-                  draggable={false}
-                />
-              </motion.div>
+              <motion.img
+                key={currentImg}
+                src={currentImg}
+                alt={car.model}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.22 }}
+                draggable={false}
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+              />
             </AnimatePresence>
 
-            {/* ROTATE HINT */}
+            {/* 360 hint */}
             {mode === "rotate" && (
-              <div className="absolute bottom-4 left-0 right-0 flex justify-center">
-                <div className="glass px-4 py-2 text-[10px] tracking-[3px] text-white/50 uppercase animate-pulse">
-                  Drag slowly to explore 360°
-                </div>
+              <div style={{ position: "absolute", bottom: 16, left: "50%", transform: "translateX(-50%)",
+                background: "rgba(12,12,14,0.82)", backdropFilter: "blur(8px)",
+                padding: "8px 20px", fontSize: 9, letterSpacing: 3,
+                textTransform: "uppercase", color: "rgba(244,239,228,0.45)", pointerEvents: "none" }}>
+                ← Drag to rotate →
               </div>
             )}
 
-            {/* GALLERY ARROWS */}
+            {/* Gallery arrows */}
             {mode === "gallery" && (
               <>
-                <button
-                  onClick={() =>
-                    setGalleryIdx(
-                      (i) =>
-                        (i - 1 + car.images.gallery.length) %
-                        car.images.gallery.length
-                    )
-                  }
-                  className="absolute left-3 top-1/2 -translate-y-1/2 glass w-12 h-12 flex items-center justify-center text-xl active:scale-90"
-                >
-                  ←
-                </button>
-
-                <button
-                  onClick={() =>
-                    setGalleryIdx(
-                      (i) => (i + 1) % car.images.gallery.length
-                    )
-                  }
-                  className="absolute right-3 top-1/2 -translate-y-1/2 glass w-12 h-12 flex items-center justify-center text-xl active:scale-90"
-                >
-                  →
-                </button>
+                {[{ dir: "prev", label: "←", side: "left" }, { dir: "next", label: "→", side: "right" }].map(arrow => (
+                  <button key={arrow.dir}
+                    onClick={() => setGalleryIdx(i => arrow.dir === "prev"
+                      ? (i - 1 + car.images.gallery.length) % car.images.gallery.length
+                      : (i + 1) % car.images.gallery.length)}
+                    style={{
+                      position: "absolute", top: "50%", transform: "translateY(-50%)",
+                      [arrow.side]: 10, width: 48, height: 48,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 20, background: "rgba(12,12,14,0.82)", border: "none",
+                      color: "#F4EFE4", backdropFilter: "blur(8px)",
+                    }}>
+                    {arrow.label}
+                  </button>
+                ))}
               </>
             )}
           </div>
 
-          {/* THUMBNAILS */}
-          {mode === "gallery" && (
-            <div className="flex gap-2 p-3 border-t border-[rgba(200,164,90,0.08)]">
-              {car.images.gallery.map((img, i) => (
-                <button
-                  key={i}
-                  onClick={() => setGalleryIdx(i)}
-                  className={`relative flex-1 h-16 overflow-hidden transition-all ${
-                    i === galleryIdx
-                      ? "ring-2 ring-[#C8A45A]"
-                      : "opacity-50"
-                  }`}
-                >
-                  <Image
-                    src={img}
-                    alt=""
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Thumbnail strip — explicit height */}
+          <div style={{ flexShrink: 0, height: 72, display: "flex", gap: 6, padding: "8px 10px",
+            borderTop: "1px solid rgba(200,164,90,0.08)", background: "#0C0C0E" }}>
+            {car.images.gallery.map((img, i) => (
+              <button key={i} onClick={() => { setMode("gallery"); setGalleryIdx(i); }}
+                style={{
+                  flex: 1, height: "100%", overflow: "hidden", border: "none", padding: 0,
+                  outline: mode === "gallery" && i === galleryIdx ? "2px solid #C8A45A" : "none",
+                  opacity: mode === "gallery" && i === galleryIdx ? 1 : 0.42,
+                  transition: "opacity 0.2s",
+                }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={img} alt="" style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+              </button>
+            ))}
+          </div>
 
-          {/* ROTATE DOTS */}
+          {/* Rotate dots */}
           {mode === "rotate" && (
-            <div className="flex gap-1 p-3 border-t border-[rgba(200,164,90,0.08)] justify-center">
+            <div style={{ flexShrink: 0, height: 36, display: "flex", alignItems: "center",
+              justifyContent: "center", gap: 6, borderTop: "1px solid rgba(200,164,90,0.08)", background: "#0C0C0E" }}>
               {car.images.rotate.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setRotateIdx(i)}
-                  className={`h-1 rounded-full transition-all ${
-                    i === rotateIdx
-                      ? "w-6 bg-[#C8A45A]"
-                      : "w-2 bg-white/20"
-                  }`}
-                />
+                <button key={i} onClick={() => setRotateIdx(i)}
+                  style={{
+                    height: 4, border: "none", borderRadius: 2,
+                    width: i === rotateIdx ? 24 : 8,
+                    background: i === rotateIdx ? "#C8A45A" : "rgba(255,255,255,0.18)",
+                    transition: "all 0.3s",
+                  }} />
               ))}
             </div>
           )}
         </div>
 
-        {/* RIGHT — INFO */}
-        <div className="w-[45%] flex flex-col h-full">
+        {/* ── RIGHT: info (45%) ── */}
+        <div style={{ width: "45%", display: "flex", flexDirection: "column", background: "#0C0C0E", minHeight: 0 }}>
 
-          {/* HEADER */}
-          <div className="p-6 border-b border-[rgba(200,164,90,0.1)]">
-            <div className="text-[10px] tracking-[4px] text-[#C8A45A] uppercase mb-1">
-              {car.brand}
-            </div>
-            <div className="font-serif text-3xl text-white">
-              {car.model}
-            </div>
-            <div className="font-serif text-2xl text-[#C8A45A] mt-1">
-              {car.priceLabel}
-            </div>
-            <p className="text-xs text-white/40 mt-3 leading-relaxed">
-              {car.description}
-            </p>
+          {/* Header */}
+          <div style={{ flexShrink: 0, padding: "24px 28px", borderBottom: "1px solid rgba(200,164,90,0.1)" }}>
+            <div style={{ fontSize: 9, letterSpacing: 4, textTransform: "uppercase", color: "#C8A45A", marginBottom: 4 }}>{car.brand}</div>
+            <div style={{ fontFamily: "Georgia,serif", fontSize: 28, fontWeight: 300, color: "#fff", marginBottom: 6 }}>{car.model}</div>
+            <div style={{ fontFamily: "Georgia,serif", fontSize: 22, color: "#C8A45A", marginBottom: 12 }}>{car.priceLabel}</div>
+            <p style={{ fontSize: 11, color: "rgba(244,239,228,0.42)", lineHeight: 1.7, margin: 0 }}>{car.description}</p>
           </div>
 
-          {/* SPECS */}
-          <div className="flex-1 kiosk-scroll p-4">
-            <div className="text-[9px] tracking-[4px] text-white/30 uppercase mb-3">
-              Specifications
-            </div>
-
-            {specs.map((spec, i) => (
-              <div
-                key={spec.label}
-                className="flex justify-between py-3 border-b border-white/5"
-              >
-                <span className="text-xs text-white/40">
-                  {spec.label}
-                </span>
-                <span
-                  className={
-                    spec.highlight
-                      ? "text-[#C8A45A] font-serif"
-                      : "text-white"
-                  }
-                >
-                  {spec.value}
-                </span>
+          {/* Specs list */}
+          <div className="ks" style={{ flex: 1, padding: "12px 28px" }}>
+            <div style={{ fontSize: 8, letterSpacing: 4, textTransform: "uppercase",
+              color: "rgba(244,239,228,0.26)", marginBottom: 10 }}>Specifications</div>
+            {specs.map((s, i) => (
+              <div key={s.label} style={{
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+                padding: "11px 0", borderBottom: "1px solid rgba(255,255,255,0.05)",
+                background: i % 2 === 1 ? "rgba(255,255,255,0.018)" : "transparent",
+              }}>
+                <span style={{ fontSize: 11, color: "rgba(244,239,228,0.38)", letterSpacing: 0.3 }}>{s.label}</span>
+                <span style={{
+                  fontSize: s.gold ? 15 : 13, fontWeight: 500,
+                  fontFamily: s.gold ? "Georgia,serif" : "inherit",
+                  color: s.gold ? "#C8A45A" : "#F4EFE4",
+                }}>{s.val}</span>
               </div>
             ))}
           </div>
 
-          {/* ACTIONS */}
-          <div className="p-4 border-t border-[rgba(200,164,90,0.1)] space-y-2">
-
-            <button
-              onClick={() =>
-                dispatch({ type: "GO", screen: "share" })
-              }
-              className="w-full bg-[#C8A45A] text-black py-4 text-xs tracking-[3px] uppercase font-semibold"
-            >
-              Save & Send to Phone
+          {/* Actions */}
+          <div style={{ flexShrink: 0, padding: "16px 28px", borderTop: "1px solid rgba(200,164,90,0.1)" }}>
+            <button onClick={() => dispatch({ type: "GO", screen: "share" })}
+              style={{ width: "100%", background: "#C8A45A", color: "#060606", border: "none",
+                padding: "15px 0", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700,
+                marginBottom: 10 }}>
+              📱  Save &amp; Send to Phone
             </button>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() =>
-                  inCompare
-                    ? dispatch({
-                        type: "REMOVE_COMPARE",
-                        id: car.id,
-                      })
-                    : dispatch({ type: "ADD_COMPARE", car })
-                }
-                className="flex-1 py-3 text-xs border border-white/20 text-white/60 uppercase"
-              >
-                {inCompare ? "✓ In Compare" : "+ Compare"}
-              </button>
-
-              <button
-                onClick={() =>
-                  saved
-                    ? dispatch({
-                        type: "UNSAVE_CAR",
-                        id: car.id,
-                      })
-                    : dispatch({ type: "SAVE_CAR", car })
-                }
-                className="flex-1 py-3 text-xs border border-white/20 text-white/60 uppercase"
-              >
-                {saved ? "♥ Saved" : "♡ Save"}
-              </button>
+            <div style={{ display: "flex", gap: 10 }}>
+              {[
+                {
+                  active: inCompare, label: inCompare ? "✓ In Compare" : "+ Compare",
+                  onClick: () => inCompare ? dispatch({ type: "REMOVE_COMPARE", id: car.id }) : dispatch({ type: "ADD_COMPARE", car }),
+                },
+                {
+                  active: saved, label: saved ? "♥ Saved" : "♡ Save",
+                  onClick: () => saved ? dispatch({ type: "UNSAVE_CAR", id: car.id }) : dispatch({ type: "SAVE_CAR", car }),
+                },
+              ].map(btn => (
+                <button key={btn.label} onClick={btn.onClick}
+                  style={{
+                    flex: 1, padding: "12px 0", fontSize: 10, letterSpacing: 2,
+                    textTransform: "uppercase", border: "none",
+                    background: btn.active ? "rgba(200,164,90,0.12)" : "rgba(255,255,255,0.05)",
+                    color: btn.active ? "#C8A45A" : "rgba(244,239,228,0.42)",
+                    outline: btn.active ? "1px solid rgba(200,164,90,0.5)" : "1px solid rgba(255,255,255,0.08)",
+                    transition: "all 0.2s",
+                  }}>
+                  {btn.label}
+                </button>
+              ))}
             </div>
           </div>
-
         </div>
       </div>
     </ScreenLayout>

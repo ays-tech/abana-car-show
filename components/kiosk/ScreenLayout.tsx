@@ -9,74 +9,111 @@ interface Props {
   showBack?: boolean;
 }
 
+const S = {
+  wrap: {
+    position: "fixed" as const, inset: 0,
+    display: "flex", flexDirection: "column" as const,
+    background: "#060606", overflow: "hidden",
+  },
+  topbar: {
+    flexShrink: 0,
+    display: "flex", alignItems: "center", justifyContent: "space-between",
+    padding: "0 40px", height: 64,
+    background: "#0C0C0E",
+    borderBottom: "1px solid rgba(200,164,90,0.1)",
+  },
+  logo: {
+    fontFamily: "Georgia,serif", fontSize: 18,
+    fontWeight: 700, letterSpacing: 6, color: "#C8A45A",
+  },
+  logoLight: { color: "rgba(244,239,228,0.7)", fontWeight: 300 },
+  titleBar: {
+    flexShrink: 0,
+    padding: "12px 40px",
+    borderBottom: "1px solid rgba(200,164,90,0.06)",
+  },
+  titleText: {
+    fontFamily: "Georgia,serif", fontSize: 22,
+    fontWeight: 300, color: "rgba(244,239,228,0.88)",
+    letterSpacing: 1, margin: 0,
+  },
+  content: { flex: 1, display: "flex", flexDirection: "column" as const, overflow: "hidden", minHeight: 0 },
+  idleTrack: { flexShrink: 0, height: 2, background: "rgba(200,164,90,0.07)" },
+};
+
 export default function ScreenLayout({ title, children, showBack }: Props) {
   const { dispatch, state } = useKiosk();
+  const idlePct = Math.max(0, 100 - (state.idleSeconds / 60) * 100);
 
   return (
     <motion.div
-      className="w-screen h-screen flex flex-col bg-[#060606]"
-      initial={{ opacity: 0, y: 16 }}
+      style={S.wrap}
+      initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -16 }}
-      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+      exit={{ opacity: 0, y: -14 }}
+      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
     >
-      {/* Top bar */}
-      <div className="flex-shrink-0 flex items-center justify-between px-8 py-5 border-b border-[rgba(200,164,90,0.1)] bg-[#0C0C0E]">
-        {/* Left */}
-        <div className="flex items-center gap-6 w-52">
+      {/* TOP BAR */}
+      <div style={S.topbar}>
+        {/* Left — back */}
+        <div style={{ width: 160, display: "flex", alignItems: "center" }}>
           {showBack && (
             <button
               onClick={() => dispatch({ type: "BACK" })}
-              className="flex items-center gap-2 text-[rgba(244,239,228,0.4)] hover:text-[#C8A45A] transition-colors active:scale-95"
+              style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11,
+                letterSpacing: 3, textTransform: "uppercase",
+                color: "rgba(244,239,228,0.38)", background: "none", border: "none",
+                transition: "color 0.2s" }}
+              onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#C8A45A"}
+              onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(244,239,228,0.38)"}
             >
-              <span className="text-lg">←</span>
-              <span className="text-xs tracking-[3px] uppercase">Back</span>
+              <span style={{ fontSize: 18 }}>←</span> Back
             </button>
           )}
         </div>
 
-        {/* Center — logo */}
-        <div className="font-serif text-lg font-bold tracking-[5px] text-[#C8A45A]">
-          ABANA<span className="text-[rgba(244,239,228,0.7)] font-light">CARS</span>
+        {/* Centre — logo */}
+        <div style={S.logo}>
+          ABANA<span style={S.logoLight}>CARS</span>
         </div>
 
-        {/* Right — actions */}
-        <div className="flex items-center gap-4 w-52 justify-end">
+        {/* Right — compare + home */}
+        <div style={{ width: 160, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 12 }}>
           {state.compareList.length > 0 && (
             <button
               onClick={() => dispatch({ type: "GO", screen: "compare" })}
-              className="flex items-center gap-1.5 text-xs tracking-[2px] text-[#C8A45A] uppercase border border-[rgba(200,164,90,0.3)] px-4 py-2"
+              style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 10,
+                letterSpacing: 2, textTransform: "uppercase", color: "#C8A45A",
+                border: "1px solid rgba(200,164,90,0.32)", padding: "6px 14px",
+                background: "rgba(200,164,90,0.07)" }}
             >
               ⚖️ {state.compareList.length}
             </button>
           )}
           <button
             onClick={() => dispatch({ type: "RESET" })}
-            className="text-xs tracking-[2px] text-[rgba(244,239,228,0.25)] uppercase hover:text-[rgba(244,239,228,0.5)] transition-colors"
+            style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase",
+              color: "rgba(244,239,228,0.22)", background: "none", border: "none",
+              transition: "color 0.2s" }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "rgba(244,239,228,0.55)"}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(244,239,228,0.22)"}
           >
-            Home
+            ⌂ Home
           </button>
         </div>
       </div>
 
-      {/* Screen title */}
-      <div className="flex-shrink-0 px-8 py-4 border-b border-[rgba(200,164,90,0.06)]">
-        <h1 className="font-serif text-2xl font-light text-[rgba(244,239,228,0.9)] tracking-wide">
-          {title}
-        </h1>
+      {/* SCREEN TITLE */}
+      <div style={S.titleBar}>
+        <h1 style={S.titleText}>{title}</h1>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {children}
-      </div>
+      {/* CONTENT */}
+      <div style={S.content}>{children}</div>
 
-      {/* Idle bar */}
-      <div className="flex-shrink-0 h-[2px] bg-[rgba(200,164,90,0.1)]">
-        <div
-          className="h-full bg-[#C8A45A] transition-all duration-1000"
-          style={{ width: `${Math.max(0, 100 - (state.idleSeconds / 60) * 100)}%` }}
-        />
+      {/* IDLE BAR */}
+      <div style={S.idleTrack}>
+        <div style={{ height: "100%", background: "#C8A45A", width: `${idlePct}%`, transition: "width 1s linear" }} />
       </div>
     </motion.div>
   );

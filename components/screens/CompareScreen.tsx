@@ -1,43 +1,38 @@
 "use client";
-import { motion } from "framer-motion";
-import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 import { useKiosk } from "@/lib/store";
-import { cars } from "@/lib/data";
 import ScreenLayout from "../kiosk/ScreenLayout";
 
-const SPEC_ROWS = [
-  { key: "price", label: "Price", getValue: (c: any) => c.priceLabel },
-  { key: "engine", label: "Engine", getValue: (c: any) => c.engine },
-  { key: "horsepower", label: "Horsepower", getValue: (c: any) => `${c.horsepower} hp`, compareNum: (c: any) => c.horsepower, higher: true },
-  { key: "fuel", label: "Fuel Type", getValue: (c: any) => c.fuel },
-  { key: "consumption", label: "Consumption", getValue: (c: any) => c.consumption, compareNum: (c: any) => parseFloat(c.consumption), higher: false },
-  { key: "transmission", label: "Transmission", getValue: (c: any) => c.transmission },
-  { key: "seats", label: "Seats", getValue: (c: any) => `${c.seats} seats` },
-  { key: "acceleration", label: "0–100 km/h", getValue: (c: any) => c.specs.acceleration },
-  { key: "topSpeed", label: "Top Speed", getValue: (c: any) => c.specs.topSpeed },
-  { key: "bootSpace", label: "Boot Space", getValue: (c: any) => c.specs.bootSpace },
-  { key: "warranty", label: "Warranty", getValue: (c: any) => c.specs.warranty },
+const ROWS = [
+  { key: "price",        label: "Price",        get: (c: any) => c.priceLabel },
+  { key: "engine",       label: "Engine",       get: (c: any) => c.engine },
+  { key: "horsepower",   label: "Horsepower",   get: (c: any) => `${c.horsepower} hp`,  num: (c: any) => c.horsepower,            high: true  },
+  { key: "fuel",         label: "Fuel Type",    get: (c: any) => c.fuel },
+  { key: "consumption",  label: "Consumption",  get: (c: any) => c.consumption,          num: (c: any) => parseFloat(c.consumption), high: false },
+  { key: "transmission", label: "Transmission", get: (c: any) => c.transmission },
+  { key: "seats",        label: "Seats",        get: (c: any) => `${c.seats} seats` },
+  { key: "accel",        label: "0–100 km/h",   get: (c: any) => c.specs.acceleration },
+  { key: "topspeed",     label: "Top Speed",    get: (c: any) => c.specs.topSpeed },
+  { key: "boot",         label: "Boot Space",   get: (c: any) => c.specs.bootSpace },
+  { key: "warranty",     label: "Warranty",     get: (c: any) => c.specs.warranty },
 ];
 
 export default function CompareScreen() {
   const { state, dispatch } = useKiosk();
   const list = state.compareList;
 
-  const addMore = () => dispatch({ type: "GO", screen: "browse" });
-
   if (list.length === 0) {
     return (
       <ScreenLayout title="Compare Cars" showBack>
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-10">
-          <div className="text-6xl mb-6">⚖️</div>
-          <div className="font-serif text-3xl text-[rgba(244,239,228,0.5)] mb-3">No cars selected</div>
-          <div className="text-sm text-[rgba(244,239,228,0.3)] mb-8">
-            Browse cars and tap the + button to add them for comparison
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "0 40px" }}>
+          <div style={{ fontSize: 56, marginBottom: 20 }}>⚖️</div>
+          <div style={{ fontFamily: "Georgia,serif", fontSize: 28, color: "rgba(244,239,228,0.42)", marginBottom: 10 }}>No cars selected</div>
+          <div style={{ fontSize: 13, color: "rgba(244,239,228,0.28)", marginBottom: 32, lineHeight: 1.6 }}>
+            Browse cars and tap the <strong style={{ color: "#C8A45A" }}>+</strong> button on any car to add it here
           </div>
-          <button
-            onClick={addMore}
-            className="bg-[#C8A45A] text-[#060606] px-10 py-4 text-xs tracking-[3px] uppercase font-semibold"
-          >
+          <button onClick={() => dispatch({ type: "GO", screen: "browse" })}
+            style={{ background: "#C8A45A", color: "#060606", border: "none",
+              padding: "15px 44px", fontSize: 10, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700 }}>
             Browse Cars
           </button>
         </div>
@@ -45,79 +40,86 @@ export default function CompareScreen() {
     );
   }
 
-  // Find best values for numeric specs
-  const getBest = (row: typeof SPEC_ROWS[0]) => {
-    if (!row.compareNum) return null;
-    const vals = list.map((c) => row.compareNum!(c));
-    return row.higher ? Math.max(...vals) : Math.min(...vals);
+  const cols = Math.max(list.length, 1);
+  const gridCols = `200px repeat(${cols}, 1fr)`;
+
+  const best = (row: typeof ROWS[0]) => {
+    if (!row.num) return null;
+    const vals = list.map(c => row.num!(c));
+    return row.high ? Math.max(...vals) : Math.min(...vals);
   };
 
   return (
     <ScreenLayout title="Compare Cars" showBack>
-      <div className="flex-1 kiosk-scroll">
-        {/* Header row */}
-        <div
-          className="grid sticky top-0 z-20 bg-[#0C0C0E] border-b border-[rgba(200,164,90,0.1)]"
-          style={{ gridTemplateColumns: `180px repeat(${Math.max(list.length, 1)}, 1fr)` }}
-        >
-          {/* Empty label cell */}
-          <div className="p-4 flex items-end">
+      <div className="ks" style={{ flex: 1 }}>
+
+        {/* ── HEADER ROW (sticky) ── */}
+        <div style={{ display: "grid", gridTemplateColumns: gridCols,
+          position: "sticky", top: 0, zIndex: 20,
+          background: "#0C0C0E", borderBottom: "1px solid rgba(200,164,90,0.12)" }}>
+
+          {/* Add more cell */}
+          <div style={{ padding: 16, display: "flex", alignItems: "flex-end" }}>
             {list.length < 3 && (
-              <button
-                onClick={addMore}
-                className="text-[10px] tracking-[2px] text-[#C8A45A] uppercase border border-[rgba(200,164,90,0.3)] px-3 py-2 w-full text-center"
-              >
+              <button onClick={() => dispatch({ type: "GO", screen: "browse" })}
+                style={{ width: "100%", border: "1px solid rgba(200,164,90,0.3)", background: "none",
+                  color: "#C8A45A", padding: "10px 0", fontSize: 9, letterSpacing: 2, textTransform: "uppercase" }}>
                 + Add Car
               </button>
             )}
           </div>
 
-          {list.map((car) => (
-            <div key={car.id} className="p-4 border-l border-[rgba(200,164,90,0.08)]">
-              <div className="relative w-full h-28 overflow-hidden mb-3">
-                <Image src={car.images.hero} alt={car.model} fill className="object-cover" unoptimized />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0C0C0E] to-transparent" />
+          {/* Car header cells */}
+          {list.map(car => (
+            <div key={car.id} style={{ padding: 16, borderLeft: "1px solid rgba(200,164,90,0.08)" }}>
+              <div style={{ width: "100%", height: 100, overflow: "hidden", marginBottom: 10 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={car.images.hero} alt={car.model}
+                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
               </div>
-              <div className="text-[9px] tracking-[3px] text-[#C8A45A] uppercase">{car.brand}</div>
-              <div className="font-serif text-lg text-white leading-tight">{car.model}</div>
-              <button
-                onClick={() => dispatch({ type: "REMOVE_COMPARE", id: car.id })}
-                className="mt-2 text-[9px] tracking-[2px] text-[rgba(244,239,228,0.3)] uppercase hover:text-red-400 transition-colors"
-              >
+              <div style={{ fontSize: 8, letterSpacing: 3, textTransform: "uppercase", color: "#C8A45A", marginBottom: 3 }}>{car.brand}</div>
+              <div style={{ fontFamily: "Georgia,serif", fontSize: 16, color: "#F4EFE4", marginBottom: 10, lineHeight: 1.2 }}>{car.model}</div>
+              <button onClick={() => dispatch({ type: "REMOVE_COMPARE", id: car.id })}
+                style={{ fontSize: 9, letterSpacing: 1.5, textTransform: "uppercase",
+                  color: "rgba(244,239,228,0.28)", background: "none", border: "none",
+                  transition: "color 0.2s" }}
+                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = "#f87171"}
+                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = "rgba(244,239,228,0.28)"}>
                 ✕ Remove
               </button>
             </div>
           ))}
         </div>
 
-        {/* Spec rows */}
-        {SPEC_ROWS.map((row, i) => {
-          const best = getBest(row);
+        {/* ── SPEC ROWS ── */}
+        {ROWS.map((row, i) => {
+          const bestVal = best(row);
           return (
-            <div
-              key={row.key}
-              className={`grid border-b border-[rgba(255,255,255,0.04)] ${i % 2 === 0 ? "" : "bg-[rgba(255,255,255,0.02)]"}`}
-              style={{ gridTemplateColumns: `180px repeat(${Math.max(list.length, 1)}, 1fr)` }}
-            >
-              <div className="p-4 flex items-center">
-                <span className="text-xs text-[rgba(244,239,228,0.35)] tracking-wide">{row.label}</span>
+            <div key={row.key}
+              style={{ display: "grid", gridTemplateColumns: gridCols,
+                borderBottom: "1px solid rgba(255,255,255,0.04)",
+                background: i % 2 === 1 ? "rgba(255,255,255,0.018)" : "transparent" }}>
+
+              {/* Label */}
+              <div style={{ padding: "14px 16px", display: "flex", alignItems: "center" }}>
+                <span style={{ fontSize: 11, color: "rgba(244,239,228,0.35)", letterSpacing: 0.3 }}>{row.label}</span>
               </div>
-              {list.map((car) => {
-                const val = row.getValue(car);
-                const numVal = row.compareNum ? row.compareNum(car) : null;
-                const isBest = best !== null && numVal !== null && numVal === best;
+
+              {/* Values */}
+              {list.map(car => {
+                const val    = row.get(car);
+                const numVal = row.num ? row.num(car) : null;
+                const isBest = bestVal !== null && numVal !== null && numVal === bestVal;
                 return (
-                  <div
-                    key={car.id}
-                    className={`p-4 border-l border-[rgba(200,164,90,0.06)] flex items-center ${
-                      isBest ? "bg-[rgba(200,164,90,0.06)]" : ""
-                    }`}
-                  >
-                    <span className={`text-sm font-medium ${isBest ? "text-[#C8A45A]" : "text-[#F4EFE4]"}`}>
+                  <div key={car.id}
+                    style={{ padding: "14px 16px", display: "flex", alignItems: "center",
+                      borderLeft: "1px solid rgba(200,164,90,0.06)",
+                      background: isBest ? "rgba(200,164,90,0.07)" : "transparent" }}>
+                    <span style={{ fontSize: 13, fontWeight: 500, color: isBest ? "#C8A45A" : "#F4EFE4" }}>
                       {val}
                       {isBest && (
-                        <span className="ml-2 text-[9px] tracking-[2px] text-[#C8A45A] uppercase">
-                          {row.higher ? "↑ Best" : "↓ Best"}
+                        <span style={{ marginLeft: 8, fontSize: 8, letterSpacing: 2, textTransform: "uppercase", color: "#C8A45A" }}>
+                          {row.high ? "↑ Best" : "↓ Best"}
                         </span>
                       )}
                     </span>
@@ -128,27 +130,25 @@ export default function CompareScreen() {
           );
         })}
 
-        {/* Price highlight row */}
-        <div className="p-6 border-t border-[rgba(200,164,90,0.15)]">
-          <div className="text-[10px] tracking-[4px] text-[rgba(244,239,228,0.3)] uppercase mb-4">
-            Quick Actions
+        {/* ── ACTION ROW ── */}
+        <div style={{ display: "grid", gridTemplateColumns: gridCols,
+          padding: "20px 0", borderTop: "1px solid rgba(200,164,90,0.14)" }}>
+          <div style={{ padding: "0 16px", display: "flex", alignItems: "center" }}>
+            <span style={{ fontSize: 9, letterSpacing: 3, textTransform: "uppercase", color: "rgba(244,239,228,0.25)" }}>View Details</span>
           </div>
-          <div
-            className="grid gap-4"
-            style={{ gridTemplateColumns: `180px repeat(${Math.max(list.length, 1)}, 1fr)` }}
-          >
-            <div />
-            {list.map((car) => (
-              <button
-                key={car.id}
-                onClick={() => dispatch({ type: "GO", screen: "detail", car })}
-                className="bg-[#C8A45A] text-[#060606] py-3 text-xs tracking-[2px] uppercase font-semibold active:scale-95 transition-transform"
-              >
-                View Details
+          {list.map(car => (
+            <div key={car.id} style={{ padding: "0 12px" }}>
+              <button onClick={() => dispatch({ type: "GO", screen: "detail", car })}
+                style={{ width: "100%", background: "#C8A45A", color: "#060606", border: "none",
+                  padding: "13px 0", fontSize: 10, letterSpacing: 2, textTransform: "uppercase", fontWeight: 700 }}>
+                View →
               </button>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
+
+        {/* Bottom spacer */}
+        <div style={{ height: 40 }} />
       </div>
     </ScreenLayout>
   );

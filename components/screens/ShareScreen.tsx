@@ -1,110 +1,59 @@
 "use client";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState } from "react";
 import { useKiosk } from "@/lib/store";
 import ScreenLayout from "../kiosk/ScreenLayout";
-import { useState, useEffect } from "react";
+
+/* ── minimal SVG QR placeholder ── */
+function QRCode({ size = 200 }: { size?: number }) {
+  const cells = 21;
+  const cs = size / cells;
+  const pattern = (r: number, c: number): boolean => {
+    const inCorner = (rr: number, cc: number) =>
+      (rr === 0 || rr === 6 || cc === 0 || cc === 6) ||
+      (rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4);
+    if (r < 7 && c < 7) return inCorner(r, c);
+    if (r < 7 && c >= cells - 7) return inCorner(r, c - (cells - 7));
+    if (r >= cells - 7 && c < 7) return inCorner(r - (cells - 7), c);
+    return (r * 3 + c * 7 + (r ^ c)) % 3 === 0;
+  };
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display: "block" }}>
+      <rect width={size} height={size} fill="white" />
+      {Array.from({ length: cells }, (_, r) =>
+        Array.from({ length: cells }, (_, c) =>
+          pattern(r, c) ? (
+            <rect key={`${r}-${c}`} x={c * cs} y={r * cs} width={cs} height={cs} fill="#060606" />
+          ) : null
+        )
+      )}
+    </svg>
+  );
+}
 
 export default function ShareScreen() {
   const { state, dispatch } = useKiosk();
   const car = state.selectedCar;
-  const [shared, setShared] = useState(false);
-  const [qrSize, setQrSize] = useState(200);
+  const [done, setDone] = useState(false);
 
-  const carUrl = car
-    ? `https://abanacars.com.ng/car/${car.id}?utm_source=kiosk`
-    : "https://abanacars.com.ng?utm_source=kiosk";
-
-  const waMsg = car
-    ? `Hi Abanacars! I'm interested in the ${car.year} ${car.brand} ${car.model} (${car.priceLabel}). Seen at showroom. Can you send me more details?`
-    : "Hi Abanacars! I visited your showroom and would like more information about your cars.";
-
-  const waUrl = `https://wa.me/2348001234567?text=${encodeURIComponent(waMsg)}`;
-
-  function handleShare(method: "qr" | "whatsapp") {
-    setShared(true);
-    if (method === "whatsapp") {
-      // In real kiosk, open QR to WhatsApp or display QR for the WA link
-      // For demo, just show confirmation
-    }
-    setTimeout(() => {
-      dispatch({ type: "GO", screen: "home" });
-    }, 4000);
+  function handleShare() {
+    setDone(true);
+    setTimeout(() => dispatch({ type: "RESET" }), 3800);
   }
 
-  // Generate a simple SVG QR placeholder (in production, use qrcode.react)
-  const QrPlaceholder = ({ url, size }: { url: string; size: number }) => {
-    // Simple QR-style grid for visual representation
-    const cells = 21;
-    const cellSize = size / cells;
-    
-    // Deterministic pattern based on URL
-    const getCell = (row: number, col: number) => {
-      // Finder patterns (corners)
-      if (
-        (row < 7 && col < 7) ||
-        (row < 7 && col >= cells - 7) ||
-        (row >= cells - 7 && col < 7)
-      ) {
-        if (row === 0 || row === 6 || col === 0 || col === 6) return true;
-        if (row >= 2 && row <= 4 && col >= 2 && col <= 4) return true;
-        if (row < 7 && col >= cells - 7) {
-          const r2 = row, c2 = col - (cells - 7);
-          if (r2 === 0 || r2 === 6 || c2 === 0 || c2 === 6) return true;
-          if (r2 >= 2 && r2 <= 4 && c2 >= 2 && c2 <= 4) return true;
-        }
-        if (row >= cells - 7 && col < 7) {
-          const r2 = row - (cells - 7), c2 = col;
-          if (r2 === 0 || r2 === 6 || c2 === 0 || c2 === 6) return true;
-          if (r2 >= 2 && r2 <= 4 && c2 >= 2 && c2 <= 4) return true;
-          return false;
-        }
-        return false;
-      }
-      // Data cells — pseudo-random based on url and position
-      const hash = (url.charCodeAt(row % url.length) + row * 7 + col * 13) % 3;
-      return hash === 0;
-    };
+  const waMsg = car
+    ? `Hi Abanacars! I'm interested in the ${car.year} ${car.brand} ${car.model} (${car.priceLabel}). Seen at your showroom — can you send details?`
+    : "Hi Abanacars! I visited your showroom and would like more information.";
 
-    return (
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        <rect width={size} height={size} fill="white" />
-        {Array.from({ length: cells }).map((_, row) =>
-          Array.from({ length: cells }).map((_, col) =>
-            getCell(row, col) ? (
-              <rect
-                key={`${row}-${col}`}
-                x={col * cellSize}
-                y={row * cellSize}
-                width={cellSize}
-                height={cellSize}
-                fill="#060606"
-              />
-            ) : null
-          )
-        )}
-      </svg>
-    );
-  };
-
-  if (shared) {
+  if (done) {
     return (
       <ScreenLayout title="Done!" showBack={false}>
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-10">
-          <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ type: "spring", damping: 12 }}
-            className="text-8xl mb-6"
-          >
-            ✅
-          </motion.div>
-          <div className="font-serif text-4xl text-white mb-3">Details Sent!</div>
-          <div className="text-sm text-[rgba(244,239,228,0.5)] mb-2">
-            Check your WhatsApp for car details.
-          </div>
-          <div className="text-xs text-[rgba(244,239,228,0.3)] tracking-wider">
-            Returning to home in a moment…
-          </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center" }}>
+          <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: "spring", damping: 10, stiffness: 120 }}
+            style={{ fontSize: 80, marginBottom: 24 }}>✅</motion.div>
+          <div style={{ fontFamily: "Georgia,serif", fontSize: 36, color: "#fff", marginBottom: 12 }}>Details Sent!</div>
+          <div style={{ fontSize: 13, color: "rgba(244,239,228,0.42)", marginBottom: 6 }}>Check your WhatsApp for the full car details.</div>
+          <div style={{ fontSize: 10, color: "rgba(244,239,228,0.25)", letterSpacing: 2 }}>Returning to home in a moment…</div>
         </div>
       </ScreenLayout>
     );
@@ -112,97 +61,95 @@ export default function ShareScreen() {
 
   return (
     <ScreenLayout title="Save & Share" showBack>
-      <div className="flex-1 flex items-start justify-center pt-8 px-10 gap-12">
-        {/* QR Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="flex flex-col items-center"
-        >
-          <div className="text-[10px] tracking-[4px] text-[rgba(244,239,228,0.4)] uppercase mb-5">
+      <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 40px", gap: 0 }}>
+
+        {/* ── QR PANEL ── */}
+        <motion.div initial={{ opacity: 0, x: -24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45 }}
+          style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 40px" }}>
+          <div style={{ fontSize: 9, letterSpacing: 5, textTransform: "uppercase", color: "rgba(244,239,228,0.35)", marginBottom: 24 }}>
             Scan QR Code
           </div>
-          <div className="glass p-6 mb-4">
-            <QrPlaceholder url={carUrl} size={220} />
+          <div style={{ padding: 16, background: "rgba(20,20,22,0.85)", border: "1px solid rgba(200,164,90,0.15)", marginBottom: 20 }}>
+            <QRCode size={200} />
           </div>
-          <div className="text-xs text-[rgba(244,239,228,0.4)] text-center max-w-[240px] leading-relaxed">
-            Scan with your phone camera to view
-            {car ? ` the ${car.brand} ${car.model}` : " our collection"} online
+          <div style={{ fontSize: 11, color: "rgba(244,239,228,0.38)", textAlign: "center", maxWidth: 220, lineHeight: 1.6, marginBottom: 24 }}>
+            Scan with your phone camera to view{car ? ` the ${car.brand} ${car.model}` : " our full collection"} online
           </div>
-          <button
-            onClick={() => handleShare("qr")}
-            className="mt-5 border border-[rgba(200,164,90,0.3)] text-[rgba(244,239,228,0.6)] px-8 py-3 text-xs tracking-[2px] uppercase active:scale-95 transition-transform"
-          >
-            Done — Scanned!
+          <button onClick={handleShare}
+            style={{ border: "1px solid rgba(200,164,90,0.3)", color: "rgba(244,239,228,0.55)",
+              background: "none", padding: "12px 32px", fontSize: 9, letterSpacing: 3, textTransform: "uppercase" }}>
+            Done — I Scanned It ✓
           </button>
         </motion.div>
 
-        {/* Divider */}
-        <div className="flex flex-col items-center gap-3 self-center">
-          <div className="w-px h-24 bg-[rgba(200,164,90,0.15)]" />
-          <div className="text-[10px] text-[rgba(244,239,228,0.25)] tracking-wider">OR</div>
-          <div className="w-px h-24 bg-[rgba(200,164,90,0.15)]" />
+        {/* ── DIVIDER ── */}
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12, flexShrink: 0 }}>
+          <div style={{ width: 1, height: 80, background: "rgba(200,164,90,0.14)" }} />
+          <span style={{ fontSize: 10, color: "rgba(244,239,228,0.22)", letterSpacing: 2 }}>OR</span>
+          <div style={{ width: 1, height: 80, background: "rgba(200,164,90,0.14)" }} />
         </div>
 
-        {/* WhatsApp Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15 }}
-          className="flex flex-col items-center"
-        >
-          <div className="text-[10px] tracking-[4px] text-[rgba(244,239,228,0.4)] uppercase mb-5">
+        {/* ── WHATSAPP PANEL ── */}
+        <motion.div initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.45, delay: 0.12 }}
+          style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", padding: "0 40px" }}>
+          <div style={{ fontSize: 9, letterSpacing: 5, textTransform: "uppercase", color: "rgba(244,239,228,0.35)", marginBottom: 24 }}>
             Send to WhatsApp
           </div>
 
-          <div className="glass p-8 mb-6 flex flex-col items-center text-center w-[280px]">
-            <div className="text-6xl mb-4">💬</div>
-            <div className="font-serif text-xl text-white mb-2">
-              {car ? `${car.brand} ${car.model}` : "All Cars"}
-            </div>
-            {car && (
-              <div className="font-serif text-2xl text-[#C8A45A] mb-3">{car.priceLabel}</div>
+          {/* Car card */}
+          <div style={{ width: "100%", maxWidth: 280, background: "rgba(20,20,22,0.85)",
+            border: "1px solid rgba(200,164,90,0.14)", padding: "24px 20px", textAlign: "center", marginBottom: 20 }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>💬</div>
+            {car ? (
+              <>
+                <div style={{ fontSize: 8, letterSpacing: 3, textTransform: "uppercase", color: "#C8A45A", marginBottom: 4 }}>{car.brand}</div>
+                <div style={{ fontFamily: "Georgia,serif", fontSize: 20, color: "#fff", marginBottom: 6 }}>{car.model}</div>
+                <div style={{ fontFamily: "Georgia,serif", fontSize: 22, color: "#C8A45A", marginBottom: 12 }}>{car.priceLabel}</div>
+              </>
+            ) : (
+              <div style={{ fontFamily: "Georgia,serif", fontSize: 20, color: "#fff", marginBottom: 12 }}>All Cars</div>
             )}
-            <div className="text-xs text-[rgba(244,239,228,0.4)] leading-relaxed">
-              We'll send full specs, photos, and financing options directly to your WhatsApp
+            <div style={{ fontSize: 10, color: "rgba(244,239,228,0.35)", lineHeight: 1.6 }}>
+              We'll send full specs, photos &amp; financing options directly to your WhatsApp
             </div>
           </div>
 
-          <button
-            onClick={() => handleShare("whatsapp")}
-            className="w-full bg-[#25D366] text-white py-5 text-sm tracking-[2px] uppercase font-semibold active:scale-95 transition-transform flex items-center justify-center gap-3"
-          >
-            <span className="text-xl">💬</span>
-            Send via WhatsApp
+          {/* WhatsApp button */}
+          <button onClick={handleShare}
+            style={{ width: "100%", maxWidth: 280, background: "#25D366", color: "#fff", border: "none",
+              padding: "17px 0", fontSize: 11, letterSpacing: 3, textTransform: "uppercase", fontWeight: 700,
+              display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+            <span style={{ fontSize: 18 }}>💬</span> Send via WhatsApp
           </button>
 
-          <div className="mt-3 text-[10px] text-[rgba(244,239,228,0.25)] text-center">
+          <div style={{ marginTop: 12, fontSize: 9, color: "rgba(244,239,228,0.22)", textAlign: "center", letterSpacing: 1 }}>
             +234 800 ABANACARS · Victoria Island, Lagos
           </div>
         </motion.div>
       </div>
 
-      {/* Saved cars section */}
-      {state.savedCars.length > 0 && (
-        <div className="flex-shrink-0 border-t border-[rgba(200,164,90,0.1)] p-6">
-          <div className="text-[10px] tracking-[4px] text-[rgba(244,239,228,0.3)] uppercase mb-3">
-            Your Saved Cars ({state.savedCars.length})
-          </div>
-          <div className="flex gap-3 overflow-x-auto kiosk-scroll">
-            {state.savedCars.map((c) => (
-              <div
-                key={c.id}
-                onClick={() => dispatch({ type: "GO", screen: "detail", car: c })}
-                className="glass flex-shrink-0 p-3 flex items-center gap-3 active:scale-95 transition-transform"
-              >
-                <div className="text-[9px] tracking-[2px] text-[#C8A45A] uppercase">{c.brand}</div>
-                <div className="font-serif text-sm text-white">{c.model}</div>
-                <div className="text-xs text-[rgba(244,239,228,0.4)]">{c.priceLabel}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* ── SAVED CARS ── */}
+      <AnimatePresence>
+        {state.savedCars.length > 0 && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
+            style={{ flexShrink: 0, borderTop: "1px solid rgba(200,164,90,0.1)", padding: "14px 40px", background: "#0C0C0E" }}>
+            <div style={{ fontSize: 8, letterSpacing: 4, textTransform: "uppercase", color: "rgba(244,239,228,0.25)", marginBottom: 10 }}>
+              Saved Cars ({state.savedCars.length})
+            </div>
+            <div className="ks-x" style={{ display: "flex", gap: 10 }}>
+              {state.savedCars.map(c => (
+                <button key={c.id} onClick={() => dispatch({ type: "GO", screen: "detail", car: c })}
+                  style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                    background: "rgba(20,20,22,0.85)", border: "1px solid rgba(200,164,90,0.14)" }}>
+                  <div style={{ fontSize: 8, letterSpacing: 2, textTransform: "uppercase", color: "#C8A45A" }}>{c.brand}</div>
+                  <div style={{ fontFamily: "Georgia,serif", fontSize: 14, color: "#F4EFE4" }}>{c.model}</div>
+                  <div style={{ fontSize: 11, color: "rgba(244,239,228,0.38)" }}>{c.priceLabel}</div>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </ScreenLayout>
   );
 }
